@@ -5,11 +5,16 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.GameModeSelectionScreen
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.gui.widget.ButtonWidget
+import net.minecraft.client.option.KeyBinding
 import net.minecraft.client.toast.SystemToast
+import net.minecraft.client.util.InputUtil
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.text.Text
+import org.lwjgl.glfw.GLFW
 import java.awt.Color
+import java.awt.MouseInfo
+import java.awt.SystemColor.window
 
 class CustomScreen(title: Text) : Screen(title) {
 
@@ -19,32 +24,85 @@ class CustomScreen(title: Text) : Screen(title) {
     public var chunkXOffset = 0
     public var chunkZOffset = 0
     public var chunkZ15Height = IntArray(chunkSize) { 0 }
+    private var accumulatedDeltaX = 0.0
+    private var accumulatedDeltaY = 0.0
+
+    companion object {
+        val moveOffsetUpKey = KeyBinding(
+            "key.setting-up.move_offset_up",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_UP,
+            "category.setting-up"
+        )
+        val moveOffsetDownKey = KeyBinding(
+            "key.setting-up.move_offset_down",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_DOWN,
+            "category.setting-up"
+        )
+        val moveOffsetLeftKey = KeyBinding(
+            "key.setting-up.move_offset_left",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_LEFT,
+            "category.setting-up"
+        )
+        val moveOffsetRightKey = KeyBinding(
+            "key.setting-up.move_offset_right",
+            InputUtil.Type.KEYSYM,
+            GLFW.GLFW_KEY_RIGHT,
+            "category.setting-up"
+        )
+    }
 
     override fun init() {
         loadChunkData()
-        val buttonRight = ButtonWidget.builder(Text.of("right")) { btn ->
 
+    }
 
-            chunkXOffset += 1
+    override fun shouldPause(): Boolean {
+        return false
+    }
 
+    override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, deltaX: Double, deltaY: Double): Boolean {
+        if (button == 1) {
+            accumulatedDeltaX += deltaX
+            accumulatedDeltaY += deltaY
+            if (accumulatedDeltaX >= 40 || accumulatedDeltaX <= -40) {
+                chunkXOffset -= (accumulatedDeltaX / 40).toInt()
+                accumulatedDeltaX = 0.0
+            }
+            if (accumulatedDeltaY >= 40 || accumulatedDeltaY <= -40) {
+                chunkZOffset -= (accumulatedDeltaY / 40).toInt()
+                accumulatedDeltaY = 0.0
+            }
             loadChunkData()
-        }.dimensions(40, 40, 120, 20).build()
-        this.addDrawableChild(buttonRight)
-        val buttonLeft = ButtonWidget.builder(Text.of("left")) { btn ->
-            chunkXOffset -= 1
+            return true
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)
+    }
+
+    override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (moveOffsetUpKey.matchesKey(keyCode, scanCode)) {
+            chunkZOffset--
             loadChunkData()
-        }.dimensions(40, 70, 120, 20).build()
-        this.addDrawableChild(buttonLeft)
-        val buttonUp = ButtonWidget.builder(Text.of("up")) { btn ->
-            chunkZOffset -= 1
+            return true
+        }
+        if (moveOffsetDownKey.matchesKey(keyCode, scanCode)) {
+            chunkZOffset++
             loadChunkData()
-        }.dimensions(40, 100, 120, 20).build()
-        this.addDrawableChild(buttonUp)
-        val buttonDown = ButtonWidget.builder(Text.of("down")) { btn ->
-            chunkZOffset += 1
+            return true
+        }
+        if (moveOffsetLeftKey.matchesKey(keyCode, scanCode)) {
+            chunkXOffset--
             loadChunkData()
-        }.dimensions(40, 130, 120, 20).build()
-        this.addDrawableChild(buttonDown)
+            return true
+        }
+        if (moveOffsetRightKey.matchesKey(keyCode, scanCode)) {
+            chunkXOffset++
+            loadChunkData()
+            return true
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers)
     }
 
     fun loadChunkData() {

@@ -15,18 +15,17 @@ class getColor {
         // Clamp the blockHeight between 0 and 255 for safety
         var darkeningFactor = 1f
         if (z == 0) {
-            println("chunk height before = ${chunkZ15Height[x]} and current = ${blockHeight}")
             if (chunkZ15Height[x] < blockHeight[x][z]) {
-                darkeningFactor = 0.85f
-            } else if (chunkZ15Height[x] > blockHeight[x][z]) {
                 darkeningFactor = 1.15f
+            } else if (chunkZ15Height[x] > blockHeight[x][z]) {
+                darkeningFactor = 0.85f
             }
         }
         if (z != 0) {
             if (blockHeight[x][z - 1] < blockHeight[x][z]) {
-                darkeningFactor = 0.85f
-            } else if (blockHeight[x][z - 1] > blockHeight[x][z]) {
                 darkeningFactor = 1.15f
+            } else if (blockHeight[x][z - 1] > blockHeight[x][z]) {
+                darkeningFactor = 0.85f
             }
         }
         // Darken the color
