@@ -2,9 +2,10 @@ package mod.epimap
 import net.minecraft.block.Block
 import net.minecraft.block.BlockState
 import java.awt.Color
+import java.awt.Color.red
 
 class getColor {
-    fun getBlockColor(rawId: Int, blockHeight: Int): Color? {
+    fun getBlockColor(rawId: Int, blockHeight: Array<IntArray>, x: Int, z: Int, chunkZ15Height: IntArray): Color? {
         val blockState: BlockState = Block.getStateFromRawId(rawId)
         val mapColor = blockState.block.defaultMapColor ?: return null
 
@@ -12,8 +13,22 @@ class getColor {
 
         // Calculate a darkening factor based on blockHeight (e.g., higher = darker)
         // Clamp the blockHeight between 0 and 255 for safety
-        val darkeningFactor = ((blockHeight * 3) / 255.0f).coerceIn(0.4F, 1F)
-
+        var darkeningFactor = 1f
+        if (z == 0) {
+            println("chunk height before = ${chunkZ15Height[x]} and current = ${blockHeight}")
+            if (chunkZ15Height[x] < blockHeight[x][z]) {
+                darkeningFactor = 0.85f
+            } else if (chunkZ15Height[x] > blockHeight[x][z]) {
+                darkeningFactor = 1.15f
+            }
+        }
+        if (z != 0) {
+            if (blockHeight[x][z - 1] < blockHeight[x][z]) {
+                darkeningFactor = 0.85f
+            } else if (blockHeight[x][z - 1] > blockHeight[x][z]) {
+                darkeningFactor = 1.15f
+            }
+        }
         // Darken the color
         val red = (baseColor.red * darkeningFactor).toInt().coerceIn(0, 255)
         val green = (baseColor.green * darkeningFactor).toInt().coerceIn(0, 255)

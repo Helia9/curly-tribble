@@ -18,6 +18,7 @@ class CustomScreen(title: Text) : Screen(title) {
     private lateinit var blockColors: Array<Array<Color?>>
     public var chunkXOffset = 0
     public var chunkZOffset = 0
+    public var chunkZ15Height = IntArray(chunkSize) { 0 }
 
     override fun init() {
         loadChunkData()
@@ -78,7 +79,10 @@ class CustomScreen(title: Text) : Screen(title) {
             for (x in 0 until chunkSize) {
                 for (z in 0 until chunkSize) {
                     val rawId = data[x][z]
-                    blockColors[offsetX + x][offsetZ + z] = getColor().getBlockColor(rawId, blockHeight[x][z])
+                    if (z == 15) {
+                        chunkZ15Height[x] = blockHeight[x][z]
+                    }
+                    blockColors[offsetX + x][offsetZ + z] = getColor().getBlockColor(rawId, blockHeight, x, z, chunkZ15Height)
                 }
             }
         }
