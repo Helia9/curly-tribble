@@ -70,12 +70,13 @@ class CustomScreen(title: Text) : Screen(title) {
             if (accumulatedDeltaX >= 40 || accumulatedDeltaX <= -40) {
                 chunkXOffset -= (accumulatedDeltaX / 40).toInt()
                 accumulatedDeltaX = 0.0
+                loadChunkData()
             }
             if (accumulatedDeltaY >= 40 || accumulatedDeltaY <= -40) {
                 chunkZOffset -= (accumulatedDeltaY / 40).toInt()
                 accumulatedDeltaY = 0.0
+                loadChunkData()
             }
-            loadChunkData()
             return true
         }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)
