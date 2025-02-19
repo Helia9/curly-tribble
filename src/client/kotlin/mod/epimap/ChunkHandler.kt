@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory
 
 class ChunkHandler {
     public fun handleChunkLoad(chunk: Chunk) {
-        val topLayer = analyzeChunk().getTopLayer(chunk)
-        val topLayerHeight = analyzeChunk().getTopLayerHeight(chunk)
+        val topLayerData = analyzeChunk().getTopLayer(chunk)
+        val (topLayer, topLayerHeight) = topLayerData
         chunkSaver().saveChunkData(topLayer, chunk.pos.x, chunk.pos.z, chunkSaver().getWorldOrServerDirectory("test"), topLayerHeight)
         //println("Chunk data saved, chunk at : ${chunk.pos.x}, ${chunk.pos.z}")
     }

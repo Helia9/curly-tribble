@@ -32,11 +32,11 @@ object EpimapClient : ClientModInitializer {
 			analyzeChunk().testcheck()
 			chunkSaver()
 			chunkSaver().saveChunkData(
-				analyzeChunk().getTopLayer(client.world!!.getChunk(-29, 21)),
+				analyzeChunk().getTopLayer(client.world!!.getChunk(-29, 21)).first,
 				-29,
 				21,
 				chunkSaver().getWorldOrServerDirectory("test"),
-				analyzeChunk().getTopLayerHeight(client.world!!.getChunk(-29, 21))
+				analyzeChunk().getTopLayer(client.world!!.getChunk(-29, 21)).second
 			)
 		})
 	}
