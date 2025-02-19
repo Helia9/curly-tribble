@@ -1,7 +1,11 @@
 package mod.epimap
 
+import com.fasterxml.jackson.databind.annotation.JsonAppend.Prop
+import net.minecraft.block.Block
 import net.minecraft.block.Blocks
+import net.minecraft.fluid.WaterFluid
 import net.minecraft.registry.tag.BlockTags
+import net.minecraft.state.property.Properties
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.chunk.Chunk
 
@@ -18,10 +22,13 @@ class analyzeChunk {
             for (z in 0..15) {
                 for (y in 255 downTo 0) {
                     // if the block is not air or any transparent block, add it to the top layer
-                    if (chunk.getBlockState(BlockPos(x, y, z)).isOpaque or chunk.getBlockState(BlockPos(x, y, z)).isOf(
-                            Blocks.WATER) or chunk.getBlockState(BlockPos(x, y, z)).isIn(BlockTags.LEAVES) or chunk.getBlockState(BlockPos(x, y, z)).isOf(Blocks.LAVA)) {
-                        topLayer[x][z] = getBlockId(chunk.getBlockState(BlockPos(x, y, z)).block)
-                        break
+                    if (!chunk.getBlockState(BlockPos(x, y, z)).isAir) {
+                        if (chunk.getBlockState(BlockPos(x, y, z)).contains(Properties.WATERLOGGED) && chunk.getBlockState(BlockPos(x, y, z)).get(Properties.WATERLOGGED)) {
+                            topLayer[x][z] = 9
+                        } else {
+                            topLayer[x][z] = getBlockId(chunk.getBlockState(BlockPos(x, y, z)).block)
+                            break
+                        }
                     }
                 }
             }
@@ -34,11 +41,15 @@ class analyzeChunk {
         for (x in 0..15) {
             for (z in 0..15) {
                 for (y in 255 downTo 0) {
-                    // if the block is not air or any transparent block, add it to the top layer
-                    if (chunk.getBlockState(BlockPos(x, y, z)).isOpaque or chunk.getBlockState(BlockPos(x, y, z)).isOf(
-                            Blocks.WATER) or chunk.getBlockState(BlockPos(x, y, z)).isIn(BlockTags.LEAVES) or chunk.getBlockState(BlockPos(x, y, z)).isOf(Blocks.LAVA)) {
-                        topLayerHeight[x][z] = y
-                        break
+                    val blockState = chunk.getBlockState(BlockPos(x, y, z))
+
+                    // Check if the block is not air
+                    if (!blockState.isAir) {
+                        // Check if the block is not water, seagrass, kelp, or tall seagrass
+                        if (blockState.block != Blocks.WATER) {
+                            topLayerHeight[x][z] = y
+                            break
+                        }
                     }
                 }
             }
@@ -53,10 +64,10 @@ class analyzeChunk {
             for (z in 0..15) {
                 val id = topLayer[x][z]
                 val convertdedid = net.minecraft.block.Block.getStateFromRawId(id)
-                print(convertdedid.block)
-                print(" ")
+                //print(convertdedid.block)
+                //print(" ")
             }
-            println()
+            //println()
         }
     }
     // function that will listen ensure that the world is loaded before calling the test function

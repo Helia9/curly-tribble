@@ -1,29 +1,24 @@
 package mod.epimap
 
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.GameModeSelectionScreen
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.gui.widget.ButtonWidget
 import net.minecraft.client.option.KeyBinding
-import net.minecraft.client.toast.SystemToast
-import net.minecraft.client.util.InputUtil
-import net.minecraft.item.ItemStack
-import net.minecraft.item.Items
 import net.minecraft.text.Text
 import org.lwjgl.glfw.GLFW
 import java.awt.Color
-import java.awt.MouseInfo
-import java.awt.SystemColor.window
+import net.minecraft.client.util.InputUtil
 
 class CustomScreen(title: Text) : Screen(title) {
 
     private val chunkSize = 16
     private var renderRadius = 4
     private lateinit var blockColors: Array<Array<Color?>>
-    public var chunkXOffset = 0
-    public var chunkZOffset = 0
-    public var chunkZ15Height = IntArray(chunkSize) { 0 }
+    var chunkXOffset = 0
+    var chunkZOffset = 0
+    var chunkZ15Height = IntArray(chunkSize) { 0 }
     private var accumulatedDeltaX = 0.0
     private var accumulatedDeltaY = 0.0
 
@@ -54,15 +49,6 @@ class CustomScreen(title: Text) : Screen(title) {
         )
     }
 
-    override fun init() {
-        loadChunkData()
-
-    }
-
-    override fun shouldPause(): Boolean {
-        return false
-    }
-
     override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, deltaX: Double, deltaY: Double): Boolean {
         if (button == 1) {
             accumulatedDeltaX += deltaX
@@ -82,7 +68,20 @@ class CustomScreen(title: Text) : Screen(title) {
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)
     }
 
+    override fun init() {
+        var chunk_list = ChunkHandler().getChunksInRadius(4)
+        for (chunk in chunk_list) {
+            ChunkHandler().handleChunkLoad(chunk)
+        }
+        loadChunkData()
+
+    }
+
+    override fun shouldPause(): Boolean {
+        return false
+    }
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+
         if (moveOffsetUpKey.matchesKey(keyCode, scanCode)) {
             chunkZOffset--
             loadChunkData()
@@ -95,7 +94,7 @@ class CustomScreen(title: Text) : Screen(title) {
         }
         if (moveOffsetLeftKey.matchesKey(keyCode, scanCode)) {
             chunkXOffset--
-            loadChunkData()
+        loadChunkData()
             return true
         }
         if (moveOffsetRightKey.matchesKey(keyCode, scanCode)) {
@@ -120,7 +119,6 @@ class CustomScreen(title: Text) : Screen(title) {
         val playerChunkX = (player.blockX / chunkSize) + chunkXOffset
         val playerChunkZ = (player.blockZ / chunkSize) + chunkZOffset
 
-
         for (dx in -renderRadius..renderRadius) {
             for (dz in -renderRadius..renderRadius) {
                 val chunkX = playerChunkX + dx
@@ -129,8 +127,9 @@ class CustomScreen(title: Text) : Screen(title) {
             }
         }
     }
+
     private fun addChunkRender(chunkX: Int, chunkZ: Int, dx: Int, dz: Int) {
-        val chunkData = chunkLoader().loadChunkData(chunkX, chunkZ, chunkSaver().getWorldOrServerDirectory("test"))
+        val chunkData = chunkLoader().loadChunkData(chunkX, chunkZ, chunkSaver().getWorldOrServerDirectory(chunkSaver().getWorldName()))
         if (chunkData != null) {
             val (data, blockHeight) = chunkData
             val offsetX = (dx + renderRadius) * chunkSize
@@ -154,12 +153,10 @@ class CustomScreen(title: Text) : Screen(title) {
         val screenWidth = client.window.scaledWidth
         val screenHeight = client.window.scaledHeight
 
-
         val renderWidth = blockColors.size * 10
         val renderHeight = blockColors[0].size * 10
         val startX = (screenWidth - renderWidth) / 2
         val startY = (screenHeight - renderHeight) / 2
-
 
         for (x in blockColors.indices) {
             for (z in blockColors[x].indices) {
