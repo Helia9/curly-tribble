@@ -22,7 +22,8 @@ class CustomScreen(title: Text) : Screen(title) {
     private var accumulatedDeltaX = 0.0
     private var accumulatedDeltaY = 0.0
     private var zoom = 10
-    private val mapPixelSize = 800
+    val guiScale = MinecraftClient.getInstance().window.scaleFactor
+    val mapPixelSize = (800 / guiScale).toInt()
     private val colorHelper = getColor()
 
     companion object {
@@ -73,7 +74,7 @@ class CustomScreen(title: Text) : Screen(title) {
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
         val oldZoom = zoom
-        zoom = (zoom + verticalAmount.toInt()).coerceIn(4, 40)
+        zoom = (zoom + verticalAmount.toInt()).coerceIn((4 / guiScale).toInt(), (40 * guiScale).toInt())
         println("Zoom level: $zoom")
         if (zoom != oldZoom) {
             this.loadChunkData()
