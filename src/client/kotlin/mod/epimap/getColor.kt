@@ -9,9 +9,6 @@ class getColor {
         val mapColor = blockState.block.defaultMapColor ?: return null
 
         val baseColor = Color(mapColor.color)
-
-        // Calculate a darkening factor based on blockHeight (e.g., higher = darker)
-        // Clamp the blockHeight between 0 and 255 for safety
         var darkeningFactor = 1f
         if (blockHeight[x][z] > 62) {
             if (z == 0) {
