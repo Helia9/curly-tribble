@@ -10,6 +10,11 @@ import net.minecraft.text.Text
 import org.lwjgl.glfw.GLFW
 import java.awt.Color
 import net.minecraft.client.util.InputUtil
+import net.minecraft.util.Identifier
+import com.mojang.blaze3d.systems.RenderSystem
+import net.minecraft.client.render.GameRenderer
+import net.minecraft.util.math.RotationAxis
+import net.minecraft.client.render.RenderLayer
 
 class CustomScreen(title: Text) : Screen(title) {
 
@@ -30,6 +35,7 @@ class CustomScreen(title: Text) : Screen(title) {
     private var lastCenterBlockX = 0
     private var lastCenterBlockZ = 0
     private var lastZoom = 0
+    private val ARROW_TEXTURE = Identifier.of("epimap", "textures/gui/arrow.png")
 
     companion object {
         val moveOffsetUpKey = KeyBinding(
@@ -180,6 +186,36 @@ class CustomScreen(title: Text) : Screen(title) {
         }
     }
 
+    fun draw_player(startX: Int, startY: Int, context: DrawContext) {
+        val player = client?.player
+        if (player != null) {
+            val arraySize = blockColors.size
+            val centerBlockX = player.blockX + blockXOffset
+            val centerBlockZ = player.blockZ + blockZOffset
+            val topLeftBlockX = centerBlockX - arraySize / 2
+            val topLeftBlockZ = centerBlockZ - arraySize / 2
+            val playerArrayX = player.blockX - topLeftBlockX
+            val playerArrayZ = player.blockZ - topLeftBlockZ
+
+            if (playerArrayX in 0 until arraySize && playerArrayZ in 0 until arraySize) {
+                val playerPixelX = startX + playerArrayX * zoom
+                val playerPixelY = startY + playerArrayZ * zoom
+
+                context.matrices.push()
+                context.matrices.translate(
+                    (playerPixelX + zoom / 2).toDouble(),
+                    (playerPixelY + zoom / 2).toDouble(),
+                    0.0
+                )
+                context.matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-player.yaw))
+                context.matrices.translate((-zoom / 2).toDouble(), (-zoom / 2).toDouble(), 0.0)
+                RenderSystem.setShaderTexture(0, ARROW_TEXTURE)
+                context.drawTexture({ RenderLayer.getGui() }, ARROW_TEXTURE, 0, 0, 0f, 0f, zoom, zoom, zoom, zoom)
+                context.matrices.pop()
+            }
+        }
+    }
+
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         if (needsLoading) {
             loadChunkData()
@@ -205,21 +241,6 @@ class CustomScreen(title: Text) : Screen(title) {
             }
         }
 
-        val player = client.player
-        if (player != null) {
-            val arraySize = blockColors.size
-            val centerBlockX = player.blockX + blockXOffset
-            val centerBlockZ = player.blockZ + blockZOffset
-            val topLeftBlockX = centerBlockX - arraySize / 2
-            val topLeftBlockZ = centerBlockZ - arraySize / 2
-            val playerArrayX = player.blockX - topLeftBlockX
-            val playerArrayZ = player.blockZ - topLeftBlockZ
-
-            if (playerArrayX in 0 until arraySize && playerArrayZ in 0 until arraySize) {
-                val playerPixelX = startX + playerArrayX * zoom
-                val playerPixelY = startY + playerArrayZ * zoom
-                context.fill(playerPixelX, playerPixelY, playerPixelX + zoom, playerPixelY + zoom, Color.RED.rgb)
-            }
-        }
+        draw_player(startX, startY, context)
     }
 }
