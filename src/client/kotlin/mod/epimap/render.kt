@@ -36,6 +36,7 @@ class CustomScreen(title: Text) : Screen(title) {
     private var lastCenterBlockZ = 0
     private var lastZoom = 0
     private val ARROW_TEXTURE = Identifier.of("epimap", "textures/gui/arrow.png")
+    // prints the current path to the console
 
     companion object {
         val moveOffsetUpKey = KeyBinding(
@@ -86,6 +87,9 @@ class CustomScreen(title: Text) : Screen(title) {
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
         val oldZoom = zoom
         zoom = (zoom + verticalAmount.toInt()).coerceIn((4 / guiScale).toInt(), (40 * guiScale).toInt())
+        if (zoom == 0) {
+            zoom = 1 // Prevents division by zero
+        }
         println("Zoom level: $zoom")
         if (zoom != oldZoom) {
             this.needsLoading = true
@@ -197,21 +201,54 @@ class CustomScreen(title: Text) : Screen(title) {
             val playerArrayX = player.blockX - topLeftBlockX
             val playerArrayZ = player.blockZ - topLeftBlockZ
 
+            val textureManager = MinecraftClient.getInstance().textureManager
+            val texture = textureManager.getTexture(ARROW_TEXTURE)
+            if (texture == null) {
+                // It's generally better to log an error than to crash if a texture is missing after initial load.
+                // For now, keeping the error as in your code.
+                error("Texture not loaded: $ARROW_TEXTURE")
+            }
+            // else {
+            //    println("texture is : $texture") // Debug print
+            // }
+
             if (playerArrayX in 0 until arraySize && playerArrayZ in 0 until arraySize) {
                 val playerPixelX = startX + playerArrayX * zoom
                 val playerPixelY = startY + playerArrayZ * zoom
+                // this is false btw, the actual size is 360 but doesnt matter
+                val ACTUAL_ARROW_TEXTURE_WIDTH = 32
+                val ACTUAL_ARROW_TEXTURE_HEIGHT = 32
 
                 context.matrices.push()
                 context.matrices.translate(
-                    (playerPixelX + zoom / 2).toDouble(),
-                    (playerPixelY + zoom / 2).toDouble(),
+                    (playerPixelX + zoom / 2).toDouble(), // Center of the player's grid cell
+                    (playerPixelY + zoom / 2).toDouble(), // Center of the player's grid cell
                     0.0
                 )
-                context.matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-player.yaw))
-                context.matrices.translate((-zoom / 2).toDouble(), (-zoom / 2).toDouble(), 0.0)
+                context.matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(player.yaw)) // Rotate around this center
+
+                // Adjust translation for centering if origin is bottom-right.
+                // The arrow's display size on screen will be 'zoom' x 'zoom'.
+                context.matrices.translate(
+                    (zoom / 2).toDouble(), // Positive offset if (0,0) in drawTexture is bottom-right
+                    (zoom / 2).toDouble(), // Positive offset
+                    0.0
+                )
+
                 RenderSystem.setShaderTexture(0, ARROW_TEXTURE)
-                context.drawTexture({ RenderLayer.getGui() }, ARROW_TEXTURE, 0, 0, 0f, 0f, zoom, zoom, zoom, zoom)
+                RenderSystem.enableBlend()
+                RenderSystem.defaultBlendFunc()
+
+                context.drawTexture(
+                    { RenderLayer.getGuiTextured(ARROW_TEXTURE) },
+                    ARROW_TEXTURE,
+                    0, 0,
+                    0f, 0f,
+                    32, 32,
+                    ACTUAL_ARROW_TEXTURE_WIDTH, ACTUAL_ARROW_TEXTURE_HEIGHT // Actual dimensions of the texture file
+                )
                 context.matrices.pop()
+                println("zoom is: $zoom")
             }
         }
     }
