@@ -16,8 +16,8 @@ class CustomScreen(title: Text) : Screen(title) {
     private val chunkSize = 16
     private var renderRadius = 4
     private lateinit var blockColors: Array<Array<Color?>>
-    var chunkXOffset = 0
-    var chunkZOffset = 0
+    var blockXOffset = 0
+    var blockZOffset = 0
     var chunkZ15Height = IntArray(chunkSize) { 0 }
     private var accumulatedDeltaX = 0.0
     private var accumulatedDeltaY = 0.0
@@ -53,14 +53,14 @@ class CustomScreen(title: Text) : Screen(title) {
         if (button == 1) {
             accumulatedDeltaX += deltaX
             accumulatedDeltaY += deltaY
-            if (accumulatedDeltaX >= 40 || accumulatedDeltaX <= -40) {
-                chunkXOffset -= (accumulatedDeltaX / 40).toInt()
-                accumulatedDeltaX = 0.0
+            if (accumulatedDeltaX >= 10 || accumulatedDeltaX <= -10) {
+                blockXOffset -= (accumulatedDeltaX / 10).toInt()
+                accumulatedDeltaX %= 10
                 loadChunkData()
             }
-            if (accumulatedDeltaY >= 40 || accumulatedDeltaY <= -40) {
-                chunkZOffset -= (accumulatedDeltaY / 40).toInt()
-                accumulatedDeltaY = 0.0
+            if (accumulatedDeltaY >= 10 || accumulatedDeltaY <= -10) {
+                blockZOffset -= (accumulatedDeltaY / 10).toInt()
+                accumulatedDeltaY %= 10
                 loadChunkData()
             }
             return true
@@ -83,22 +83,22 @@ class CustomScreen(title: Text) : Screen(title) {
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
 
         if (moveOffsetUpKey.matchesKey(keyCode, scanCode)) {
-            chunkZOffset--
+            blockZOffset--
             loadChunkData()
             return true
         }
         if (moveOffsetDownKey.matchesKey(keyCode, scanCode)) {
-            chunkZOffset++
+            blockZOffset++
             loadChunkData()
             return true
         }
         if (moveOffsetLeftKey.matchesKey(keyCode, scanCode)) {
-            chunkXOffset--
+            blockXOffset--
         loadChunkData()
             return true
         }
         if (moveOffsetRightKey.matchesKey(keyCode, scanCode)) {
-            chunkXOffset++
+            blockXOffset++
             loadChunkData()
             return true
         }
@@ -109,38 +109,43 @@ class CustomScreen(title: Text) : Screen(title) {
         val client = MinecraftClient.getInstance()
         val player = client.player ?: return
 
-        // how many chunks we wanna save
         val arraySize = (renderRadius * 2 + 1) * chunkSize
         blockColors = Array(arraySize) { Array<Color?>(arraySize) { null } }
 
-        // we center the map around this point, if we could move it we could move the map in the menu
-        println("real chunk pos = ${player.blockX / chunkSize}, ${player.blockZ / chunkSize}")
-        println("chunk offset = $chunkXOffset, $chunkZOffset")
-        val playerChunkX = (player.blockX / chunkSize) + chunkXOffset
-        val playerChunkZ = (player.blockZ / chunkSize) + chunkZOffset
+        val centerBlockX = player.blockX + blockXOffset
+        val centerBlockZ = player.blockZ + blockZOffset
+        val playerChunkX = centerBlockX / chunkSize
+        val playerChunkZ = centerBlockZ / chunkSize
+        val blockOffsetX = centerBlockX % chunkSize
+        val blockOffsetZ = centerBlockZ % chunkSize
 
-        for (dx in -renderRadius..renderRadius) {
-            for (dz in -renderRadius..renderRadius) {
+        for (dx in -renderRadius-1..renderRadius) {
+            for (dz in -renderRadius-1..renderRadius) {
                 val chunkX = playerChunkX + dx
                 val chunkZ = playerChunkZ + dz
-                addChunkRender(chunkX, chunkZ, dx, dz)
+                addChunkRender(chunkX, chunkZ, dx, dz, blockOffsetX, blockOffsetZ)
             }
         }
     }
 
-    private fun addChunkRender(chunkX: Int, chunkZ: Int, dx: Int, dz: Int) {
-        val chunkData = chunkLoader().loadChunkData(chunkX, chunkZ, chunkSaver().getWorldOrServerDirectory(chunkSaver().getWorldName()))
+    private fun addChunkRender(chunkX: Int, chunkZ: Int, dx: Int, dz: Int, blockOffsetX: Int, blockOffsetZ: Int) {
+        val chunksaver = chunkSaver()
+        val chunkData = chunkLoader().loadChunkData(chunkX, chunkZ, chunksaver.getWorldOrServerDirectory(chunksaver.getWorldName()))
         if (chunkData != null) {
             val (data, blockHeight) = chunkData
-            val offsetX = (dx + renderRadius) * chunkSize
-            val offsetZ = (dz + renderRadius) * chunkSize
+            val offsetX = (dx + renderRadius) * chunkSize - blockOffsetX
+            val offsetZ = (dz + renderRadius) * chunkSize - blockOffsetZ
             for (x in 0 until chunkSize) {
                 for (z in 0 until chunkSize) {
                     val rawId = data[x][z]
                     if (z == 15) {
                         chunkZ15Height[x] = blockHeight[x][z]
                     }
-                    blockColors[offsetX + x][offsetZ + z] = getColor().getBlockColor(rawId, blockHeight, x, z, chunkZ15Height)
+                    val px = offsetX + x
+                    val pz = offsetZ + z
+                    if (px in blockColors.indices && pz in blockColors[0].indices) {
+                        blockColors[px][pz] = getColor().getBlockColor(rawId, blockHeight, x, z, chunkZ15Height)
+                    }
                 }
             }
         }
@@ -164,6 +169,22 @@ class CustomScreen(title: Text) : Screen(title) {
                 val pixelX = startX + x * 10
                 val pixelY = startY + z * 10
                 context.fill(pixelX, pixelY, pixelX + 10, pixelY + 10, color.rgb)
+            }
+        }
+        val player = client.player
+        if (player != null) {
+            val arraySize = blockColors.size
+            val centerBlockX = player.blockX + blockXOffset
+            val centerBlockZ = player.blockZ + blockZOffset
+            val topLeftBlockX = centerBlockX - arraySize / 2
+            val topLeftBlockZ = centerBlockZ - arraySize / 2
+            val playerArrayX = player.blockX - topLeftBlockX
+            val playerArrayZ = player.blockZ - topLeftBlockZ
+
+            if (playerArrayX in 0 until arraySize && playerArrayZ in 0 until arraySize) {
+                val playerPixelX = startX + playerArrayX * 10
+                val playerPixelY = startY + playerArrayZ * 10
+                context.fill(playerPixelX, playerPixelY, playerPixelX + 10, playerPixelY + 10, Color.RED.rgb)
             }
         }
     }
