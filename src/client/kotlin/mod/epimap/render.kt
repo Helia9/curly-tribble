@@ -13,18 +13,19 @@ import net.minecraft.client.util.InputUtil
 
 class CustomScreen(title: Text) : Screen(title) {
 
-    private val chunkSize = 16
+    private val chunkSize = 16 // Default chunk size
     private var renderRadius = 4
-    private lateinit var blockColors: Array<Array<Color?>>
-    var blockXOffset = 0
+    private lateinit var blockColors: Array<Array<Color?>> // Store the map basically
+    var blockXOffset = 0 // The offsets so that you can drag
     var blockZOffset = 0
-    var chunkZ15Height = IntArray(chunkSize) { 0 }
+    var chunkZ15Height = IntArray(chunkSize) { 0 } // Gets the height of the 15th row in the chunk as it wouldn't usually manage as we take the row + 1's height to calculate it, thus row + 1 is out of range, thus we need to use another chunk to calculate it
     private var accumulatedDeltaX = 0.0
     private var accumulatedDeltaY = 0.0
-    private var zoom = 10
-    val guiScale = MinecraftClient.getInstance().window.scaleFactor
-    val mapPixelSize = (800 / guiScale).toInt()
-    private val colorHelper = getColor()
+    private var zoom = 10 // How much to zoom in or out
+    val guiScale = MinecraftClient.getInstance().window.scaleFactor // Gets the GUI scale
+    val mapPixelSize = (800 / guiScale).toInt() // Sets the size of the map depending on the GUI scale
+    private val colorHelper = getColor() // For optimization, only gets one instance of getColor rather than creating a new one every time
+    private var needsLoading = false // For optimization, only loads one chunk per frame
 
     companion object {
         val moveOffsetUpKey = KeyBinding(
@@ -60,12 +61,12 @@ class CustomScreen(title: Text) : Screen(title) {
             if (accumulatedDeltaX >= 10 || accumulatedDeltaX <= -10) {
                 blockXOffset -= (accumulatedDeltaX / 10).toInt()
                 accumulatedDeltaX %= 10
-                loadChunkData()
+                needsLoading = true
             }
             if (accumulatedDeltaY >= 10 || accumulatedDeltaY <= -10) {
                 blockZOffset -= (accumulatedDeltaY / 10).toInt()
                 accumulatedDeltaY %= 10
-                loadChunkData()
+                needsLoading = true
             }
             return true
         }
@@ -77,7 +78,7 @@ class CustomScreen(title: Text) : Screen(title) {
         zoom = (zoom + verticalAmount.toInt()).coerceIn((4 / guiScale).toInt(), (40 * guiScale).toInt())
         println("Zoom level: $zoom")
         if (zoom != oldZoom) {
-            this.loadChunkData()
+            this.needsLoading = true
             return true
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
@@ -88,7 +89,7 @@ class CustomScreen(title: Text) : Screen(title) {
         for (chunk in chunk_list) {
             ChunkHandler().handleChunkLoad(chunk)
         }
-        loadChunkData()
+        needsLoading = true
 
     }
 
@@ -99,22 +100,22 @@ class CustomScreen(title: Text) : Screen(title) {
 
         if (moveOffsetUpKey.matchesKey(keyCode, scanCode)) {
             blockZOffset--
-            loadChunkData()
+            needsLoading = true
             return true
         }
         if (moveOffsetDownKey.matchesKey(keyCode, scanCode)) {
             blockZOffset++
-            loadChunkData()
+            needsLoading = true
             return true
         }
         if (moveOffsetLeftKey.matchesKey(keyCode, scanCode)) {
             blockXOffset--
-        loadChunkData()
+            needsLoading = true
             return true
         }
         if (moveOffsetRightKey.matchesKey(keyCode, scanCode)) {
             blockXOffset++
-            loadChunkData()
+            needsLoading = true
             return true
         }
         return super.keyPressed(keyCode, scanCode, modifiers)
@@ -168,6 +169,10 @@ class CustomScreen(title: Text) : Screen(title) {
     }
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        if (needsLoading) {
+            loadChunkData()
+            needsLoading = false
+        }
         super.render(context, mouseX, mouseY, delta)
 
         val client = MinecraftClient.getInstance()
