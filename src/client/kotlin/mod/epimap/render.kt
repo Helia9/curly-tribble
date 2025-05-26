@@ -26,6 +26,10 @@ class CustomScreen(title: Text) : Screen(title) {
     val mapPixelSize = (800 / guiScale).toInt() // Sets the size of the map depending on the GUI scale
     private val colorHelper = getColor() // For optimization, only gets one instance of getColor rather than creating a new one every time
     private var needsLoading = false // For optimization, only loads one chunk per frame
+    private val chunkCache = mutableMapOf<Pair<Int, Int>, Pair<Array<IntArray>, Array<IntArray>>>()
+    private var lastCenterBlockX = 0
+    private var lastCenterBlockZ = 0
+    private var lastZoom = 0
 
     companion object {
         val moveOffsetUpKey = KeyBinding(
@@ -89,6 +93,7 @@ class CustomScreen(title: Text) : Screen(title) {
         for (chunk in chunk_list) {
             ChunkHandler().handleChunkLoad(chunk)
         }
+        chunkCache.clear()
         needsLoading = true
 
     }
@@ -126,11 +131,16 @@ class CustomScreen(title: Text) : Screen(title) {
         val player = client.player ?: return
 
         val arraySize = (mapPixelSize / zoom).coerceAtLeast(1)
-        blockColors = Array(arraySize) { Array<Color?>(arraySize) { null } }
-
         val centerBlockX = player.blockX + blockXOffset
         val centerBlockZ = player.blockZ + blockZOffset
 
+        if (centerBlockX == lastCenterBlockX && centerBlockZ == lastCenterBlockZ && zoom == lastZoom) return
+
+        lastCenterBlockX = centerBlockX
+        lastCenterBlockZ = centerBlockZ
+        lastZoom = zoom
+
+        blockColors = Array(arraySize) { Array<Color?>(arraySize) { null } }
         val topLeftBlockX = centerBlockX - arraySize / 2
         val topLeftBlockZ = centerBlockZ - arraySize / 2
 
@@ -147,22 +157,24 @@ class CustomScreen(title: Text) : Screen(title) {
     }
 
     private fun addChunkRender(chunkX: Int, chunkZ: Int, topLeftBlockX: Int, topLeftBlockZ: Int, arraySize: Int) {
-        val chunksaver = chunkSaver()
-        val chunkData = chunkLoader().loadChunkData(chunkX, chunkZ, chunksaver.getWorldOrServerDirectory(chunksaver.getWorldName()))
-        if (chunkData != null) {
-            val (data, blockHeight) = chunkData
-            for (x in 0 until chunkSize) {
-                for (z in 0 until chunkSize) {
-                    val worldX = chunkX * chunkSize + x
-                    val worldZ = chunkZ * chunkSize + z
-                    val px = worldX - topLeftBlockX
-                    val pz = worldZ - topLeftBlockZ
-                    if (z == 15 && x in chunkZ15Height.indices) {
-                        chunkZ15Height[x] = blockHeight[x][z]
-                    }
-                    if (px in 0 until arraySize && pz in 0 until arraySize) {
-                        blockColors[px][pz] = colorHelper.getBlockColor(data[x][z], blockHeight, x, z, chunkZ15Height)
-                    }
+        val chunkKey = Pair(chunkX, chunkZ)
+        val chunkData = chunkCache.getOrPut(chunkKey) {
+            val chunksaver = chunkSaver()
+            chunkLoader().loadChunkData(chunkX, chunkZ, chunksaver.getWorldOrServerDirectory(chunksaver.getWorldName()))
+                ?: return
+        }
+        val (data, blockHeight) = chunkData
+        for (x in 0 until chunkSize) {
+            for (z in 0 until chunkSize) {
+                val worldX = chunkX * chunkSize + x
+                val worldZ = chunkZ * chunkSize + z
+                val px = worldX - topLeftBlockX
+                val pz = worldZ - topLeftBlockZ
+                if (z == 15 && x in chunkZ15Height.indices) {
+                    chunkZ15Height[x] = blockHeight[x][z]
+                }
+                if (px in 0 until arraySize && pz in 0 until arraySize) {
+                    blockColors[px][pz] = colorHelper.getBlockColor(data[x][z], blockHeight, x, z, chunkZ15Height)
                 }
             }
         }
