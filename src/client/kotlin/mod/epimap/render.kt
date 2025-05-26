@@ -26,7 +26,6 @@ class CustomScreen(title: Text) : Screen(title) {
     var chunkZ15Height = IntArray(chunkSize) { 0 } // Gets the height of the 15th row in the chunk as it wouldn't usually manage as we take the row + 1's height to calculate it, thus row + 1 is out of range, thus we need to use another chunk to calculate it
     private var accumulatedDeltaX = 0.0
     private var accumulatedDeltaY = 0.0
-    private var zoom = 10 // How much to zoom in or out
     val guiScale = MinecraftClient.getInstance().window.scaleFactor // Gets the GUI scale
     val mapPixelSize = (800 / guiScale).toInt() // Sets the size of the map depending on the GUI scale
     private val colorHelper = getColor() // For optimization, only gets one instance of getColor rather than creating a new one every time
@@ -35,6 +34,7 @@ class CustomScreen(title: Text) : Screen(title) {
     private var lastCenterBlockX = 0
     private var lastCenterBlockZ = 0
     private var lastZoom = 0
+    private var zoom = (16 / guiScale).toInt() // Default zoom
     private val ARROW_TEXTURE = Identifier.of("epimap", "textures/gui/arrow.png")
     // prints the current path to the console
 
@@ -216,8 +216,8 @@ class CustomScreen(title: Text) : Screen(title) {
                 val playerPixelX = startX + playerArrayX * zoom
                 val playerPixelY = startY + playerArrayZ * zoom
                 // this is false btw, the actual size is 360 but doesnt matter
-                val ACTUAL_ARROW_TEXTURE_WIDTH = 32
-                val ACTUAL_ARROW_TEXTURE_HEIGHT = 32
+                val ACTUAL_ARROW_TEXTURE_WIDTH = (32 / guiScale).toInt()
+                val ACTUAL_ARROW_TEXTURE_HEIGHT = (32 / guiScale).toInt()
 
                 context.matrices.push()
                 context.matrices.translate(
@@ -230,8 +230,8 @@ class CustomScreen(title: Text) : Screen(title) {
                 // Adjust translation for centering if origin is bottom-right.
                 // The arrow's display size on screen will be 'zoom' x 'zoom'.
                 context.matrices.translate(
-                    (zoom / 2).toDouble(), // Positive offset if (0,0) in drawTexture is bottom-right
-                    (zoom / 2).toDouble(), // Positive offset
+                    (-ACTUAL_ARROW_TEXTURE_HEIGHT / 2).toDouble(), // Offset to center the arrow
+                    (-ACTUAL_ARROW_TEXTURE_HEIGHT / 2).toDouble(), // offset to center the arrow
                     0.0
                 )
 
@@ -244,11 +244,10 @@ class CustomScreen(title: Text) : Screen(title) {
                     ARROW_TEXTURE,
                     0, 0,
                     0f, 0f,
-                    32, 32,
+                    ACTUAL_ARROW_TEXTURE_HEIGHT, ACTUAL_ARROW_TEXTURE_HEIGHT,
                     ACTUAL_ARROW_TEXTURE_WIDTH, ACTUAL_ARROW_TEXTURE_HEIGHT // Actual dimensions of the texture file
                 )
                 context.matrices.pop()
-                println("zoom is: $zoom")
             }
         }
     }
